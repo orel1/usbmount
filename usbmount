@@ -22,9 +22,21 @@ exec > /dev/null 2>&1
 # Log a string via the syslog facility.
 log()
 {
-	if [ $1 != debug ] || expr "$VERBOSE" : "[yY]" > /dev/null; then
-		logger -p user.$1 -t "usbmount[$$]" -- "$2"
-	fi
+	VERBOSE="$( echo $VERBOSE | tr '[:upper:]' '[:lower:]' )"
+	case "$1" in
+		err)
+			logger -p user.$1 -t usbmount[$$] -- $2 ;;
+		warning)
+			logger -p user.$1 -t usbmount[$$] -- $2 ;;
+		info)
+			case "$VERBOSE" in
+				yes|debug) logger -p user.$1 -t usbmount[$$] -- $2 ;;
+			esac ;;
+		debug)
+			case "$VERBOSE" in
+				debug) logger -p user.$1 -t usbmount[$$] -- $2 ;;
+			esac ;;
+	esac
 }
 
 
