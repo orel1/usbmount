@@ -209,7 +209,7 @@ filesystem and want to mount it again, you have basically two choices:
 
 The latter can be accomplished by the use of the command
 
-	udevadm trigger --action=add /dev/sdd2
+    udevadm trigger --action=add /dev/sdd2
 
 where `/dev/sdd2` should be substituted with the proper partition. This
 command is likely needed to be run with superuser privileges.
