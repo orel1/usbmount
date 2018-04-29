@@ -25,7 +25,7 @@ log()
 	VERBOSE="$( echo $VERBOSE | tr '[:upper:]' '[:lower:]' )"
 	case "$1" in
 		err)
-			logger -p user.$1 -t usbmount[$$] -- $2 ;;
+			logger -p user.$1 -t usbmount[$$] -- $2 && exit 1 ;;
 		warning)
 			logger -p user.$1 -t usbmount[$$] -- $2 ;;
 		info)
@@ -74,7 +74,6 @@ fi
 
 if [ ! -x /sbin/blkid ]; then
 	log err "cannot execute /sbin/blkid"
-	exit 1
 fi
 
 # Per Policy 9.3.2, directories under /var/run have to be created
@@ -92,7 +91,7 @@ if [ "$1" = add ]; then
 	# Acquire lock.
 	log debug "trying to acquire lock /var/run/usbmount/.mount.lock"
 	lockfile-create --retry 3 /var/run/usbmount/.mount || \
-		{ log err "cannot acquire lock /var/run/usbmount/.mount.lock"; exit 1; }
+		log err "cannot acquire lock /var/run/usbmount/.mount.lock"
 	trap '( lockfile-remove /var/run/usbmount/.mount )' 0
 	log debug "acquired lock /var/run/usbmount/.mount.lock"
 
@@ -191,7 +190,6 @@ if [ "$1" = add ]; then
 			else
 				# No suitable mount point found.
 				log warning "no mountpoint found for $DEVNAME"
-				exit 1
 			fi
 		fi
 	fi
@@ -220,7 +218,6 @@ elif [ "$1" = remove ]; then
 	done < /proc/mounts
 else
 	log err "unexpected: action '$1'"
-	exit 1
 fi
 
 log debug "usbmount execution finished"
