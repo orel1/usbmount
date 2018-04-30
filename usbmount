@@ -97,11 +97,20 @@ if [ "$1" = add ]; then
 
 	# Query udev for the expected device information (as we are now running in
 	# a service's context and the env variables have been lost)
-	eval $(udevadm info --query=env --export "$DEVNAME" | grep -v '^[^=]*\..*=')
+	if udevadm info --query=name --name="$DEVNAME" > /dev/null 2>&1 ; then
+		# Additional variables provided by udev are prefixed by "UDEV_"
+		eval $( udevadm info --query=env --export --export-prefix="UDEV_" "$DEVNAME" )
+		# udev converts some characters, including spaces, into hexadecimal. We
+		# want them as is, so we use 'echo -e' to interpret them.
+		label="$( /bin/echo -e $UDEV_ID_FS_LABEL_ENC )"
+		# In /etc/fstab, since spaces are used to delimit fields, if a field
+		# contains spaces, these spaces must be replaced by \040.
+		label_fstab="$( echo $label | sed 's/ /\\\\040/g' )"
+	else
+		log err "Device $DEVNAME not found"
+	fi
 
 	# Grab device information from device and "divide it"
-	#   FIXME: improvement: implement mounting by label (notice that labels
-	#   can contain spaces, which makes things a little bit less comfortable).
 	DEVINFO=$(/sbin/blkid -p $DEVNAME)
 	FSTYPE=$(echo "$DEVINFO" | sed 's/.*[[:blank:]]TYPE="\([^"]*\)".*/\1/g; s/[[:blank:]]*//g;')
 	UUID=$(echo "$DEVINFO"   | sed 's/.*[[:blank:]]UUID="\([^"]*\)".*/\1/g; s/[[:blank:]]*//g;')
@@ -112,17 +121,26 @@ if [ "$1" = add ]; then
 		exit 0
 	fi
 
-	# Try to use specifications in /etc/fstab first.
+	# To mount the device, try using the specifications in /etc/fstab first,
+	# otherwise use the default mount options.
+
+	# Identify the device by kernel name descriptors (ex. /dev/sda1)
 	if egrep -q "^[[:blank:]]*$DEVNAME" /etc/fstab; then
 		log info "executing command: mount $DEVNAME"
 		mount $DEVNAME || log err "mount by DEVNAME with $DEVNAME wasn't successful; return code $?"
 
+	# Identify the device by UUID
 	elif grep -q "^[[:blank:]]*UUID=$UUID" /etc/fstab; then
 		log info "executing command: mount -U $UUID"
 		mount -U $UUID || log err "mount by UUID with $UUID wasn't successful; return code $?"
 
+	# Identify the device by LABEL
+	elif grep -q "^[[:blank:]]*LABEL=$label_fstab" /etc/fstab; then
+		log info "executing command: mount -L $label"
+		mount -L "$label" || log err "mount by LABEL with $label wasn't successful; return code $?"
+
 	else
-		log debug "$DEVNAME contains filesystem type $FSTYPE"
+		log debug "$DEVNAME contains filesystem type $UDEV_ID_FS_TYPE"
 
 		fstype=$FSTYPE
 		# Test if the filesystem type is in the list of filesystem
