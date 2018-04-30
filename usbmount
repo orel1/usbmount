@@ -72,10 +72,6 @@ if [ "${ENABLED:-1}" -eq 0 ]; then
 	exit 0
 fi
 
-if [ ! -x /sbin/blkid ]; then
-	log err "cannot execute /sbin/blkid"
-fi
-
 # Per Policy 9.3.2, directories under /var/run have to be created
 # after every reboot.
 if [ ! -e /var/run/usbmount ]; then
@@ -110,13 +106,8 @@ if [ "$1" = add ]; then
 		log err "Device $DEVNAME not found"
 	fi
 
-	# Grab device information from device and "divide it"
-	DEVINFO=$(/sbin/blkid -p $DEVNAME)
-	FSTYPE=$(echo "$DEVINFO" | sed 's/.*[[:blank:]]TYPE="\([^"]*\)".*/\1/g; s/[[:blank:]]*//g;')
-	UUID=$(echo "$DEVINFO"   | sed 's/.*[[:blank:]]UUID="\([^"]*\)".*/\1/g; s/[[:blank:]]*//g;')
-	USAGE=$(echo "$DEVINFO"  | sed 's/.*[[:blank:]]USAGE="\([^"]*\)".*/\1/g; s/[[:blank:]]*//g;')
-
-	if ! echo $USAGE | egrep -q "(filesystem|disklabel)"; then
+	if ! echo $UDEV_ID_FS_USAGE | egrep -q "(filesystem|disklabel)"; then
+		log debug "$DEVNAME is a $UDEV_DEVTYPE"
 		log info "$DEVNAME does not contain a filesystem or disklabel"
 		exit 0
 	fi
@@ -130,9 +121,9 @@ if [ "$1" = add ]; then
 		mount $DEVNAME || log err "mount by DEVNAME with $DEVNAME wasn't successful; return code $?"
 
 	# Identify the device by UUID
-	elif grep -q "^[[:blank:]]*UUID=$UUID" /etc/fstab; then
-		log info "executing command: mount -U $UUID"
-		mount -U $UUID || log err "mount by UUID with $UUID wasn't successful; return code $?"
+	elif grep -q "^[[:blank:]]*UUID=$UDEV_ID_FS_UUID" /etc/fstab; then
+		log info "executing command: mount -U $UDEV_ID_FS_UUID"
+		mount -U $UDEV_ID_FS_UUID || log err "mount by UUID with $UDEV_ID_FS_UUID wasn't successful; return code $?"
 
 	# Identify the device by LABEL
 	elif grep -q "^[[:blank:]]*LABEL=$label_fstab" /etc/fstab; then
@@ -142,10 +133,9 @@ if [ "$1" = add ]; then
 	else
 		log debug "$DEVNAME contains filesystem type $UDEV_ID_FS_TYPE"
 
-		fstype=$FSTYPE
 		# Test if the filesystem type is in the list of filesystem
 		# types to mount.
-		if in_list "$fstype" "$FILESYSTEMS"; then
+		if in_list "$UDEV_ID_FS_TYPE" "$FILESYSTEMS"; then
 			# Search an available mountpoint.
 			for v in $MOUNTPOINTS; do
 				if [ -d "$v" ] && ! grep -q "^[^ ][^ ]*  *$v " /proc/mounts; then
@@ -158,7 +148,7 @@ if [ "$1" = add ]; then
 				# Determine mount options.
 				options=
 				for v in $FS_MOUNTOPTIONS; do
-					if expr "$v" : "-fstype=$fstype,."; then
+					if expr "$v" : "-fstype=$UDEV_ID_FS_TYPE,."; then
 						options="$(echo "$v" | sed 's/^[^,]*,//')"
 						break
 					fi
@@ -168,8 +158,8 @@ if [ "$1" = add ]; then
 				fi
 
 				# Mount the filesystem.
-				log info "executing command: mount -t$fstype ${options:+-o$options} $DEVNAME $mountpoint"
-				mount "-t$fstype" "${options:+-o$options}" "$DEVNAME" "$mountpoint"
+				log info "executing command: mount -t$UDEV_ID_FS_TYPE ${options:+-o$options} $DEVNAME $mountpoint"
+				mount "-t$UDEV_ID_FS_TYPE" "${options:+-o$options}" "$DEVNAME" "$mountpoint"
 
 				# Determine vendor and model.
 				vendor=
@@ -199,7 +189,7 @@ if [ "$1" = add ]; then
 				# Run hook scripts; ignore errors.
 				export UM_DEVICE="$DEVNAME"
 				export UM_MOUNTPOINT="$mountpoint"
-				export UM_FILESYSTEM="$fstype"
+				export UM_FILESYSTEM="$UDEV_ID_FS_TYPE"
 				export UM_MOUNTOPTIONS="$options"
 				export UM_VENDOR="$vendor"
 				export UM_MODEL="$model"
