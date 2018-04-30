@@ -161,38 +161,13 @@ if [ "$1" = add ]; then
 				log info "executing command: mount -t$UDEV_ID_FS_TYPE ${options:+-o$options} $DEVNAME $mountpoint"
 				mount "-t$UDEV_ID_FS_TYPE" "${options:+-o$options}" "$DEVNAME" "$mountpoint"
 
-				# Determine vendor and model.
-				vendor=
-				if [ -r "/sys$DEVPATH/device/vendor" ]; then
-					vendor="`cat \"/sys$DEVPATH/device/vendor\"`"
-				elif [ -r "/sys$DEVPATH/../device/vendor" ]; then
-					vendor="`cat \"/sys$DEVPATH/../device/vendor\"`"
-				elif [ -r "/sys$DEVPATH/device/../manufacturer" ]; then
-					vendor="`cat \"/sys$DEVPATH/device/../manufacturer\"`"
-				elif [ -r "/sys$DEVPATH/../device/../manufacturer" ]; then
-					vendor="`cat \"/sys$DEVPATH/../device/../manufacturer\"`"
-				fi
-				vendor="$(echo "$vendor" | sed 's/^[[:blank:]]\+//; s/[[:blank:]]\+$//')"
-
-				model=
-				if [ -r "/sys$DEVPATH/device/model" ]; then
-					model="`cat \"/sys$DEVPATH/device/model\"`"
-				elif [ -r "/sys$DEVPATH/../device/model" ]; then
-					model="`cat \"/sys$DEVPATH/../device/model\"`"
-				elif [ -r "/sys$DEVPATH/device/../product" ]; then
-					model="`cat \"/sys$DEVPATH/device/../product\"`"
-				elif [ -r "/sys$DEVPATH/../device/../product" ]; then
-					model="`cat \"/sys$DEVPATH/../device/../product\"`"
-				fi
-				model="$(echo "$model" | sed 's/^[[:blank:]]\+//; s/[[:blank:]]\+$//')"
-
 				# Run hook scripts; ignore errors.
 				export UM_DEVICE="$DEVNAME"
 				export UM_MOUNTPOINT="$mountpoint"
 				export UM_FILESYSTEM="$UDEV_ID_FS_TYPE"
 				export UM_MOUNTOPTIONS="$options"
-				export UM_VENDOR="$vendor"
-				export UM_MODEL="$model"
+				export UM_VENDOR="$UDEV_ID_VENDOR"
+				export UM_MODEL="$UDEV_ID_MODEL"
 				log info "executing command: run-parts /etc/usbmount/mount.d"
 				run-parts /etc/usbmount/mount.d || :
 			else
