@@ -212,3 +212,5 @@ else
 fi
 
 log debug "usbmount execution finished"
+
+# vim: noet
