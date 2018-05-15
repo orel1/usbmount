@@ -1,5 +1,6 @@
 #!/bin/sh
-# This script removes the model name symlink in /var/run/usbmount.
+# This script removes symlinks that do not target a used mountpoint in
+# /var/run/usbmount.
 # Copyright (C) 2005 Martin Dickopp
 #
 # This file is free software; the copyright holder gives unlimited
@@ -13,11 +14,17 @@
 #
 set -e
 
-ls /var/run/usbmount | while read name; do
-	if test "`readlink \"/var/run/usbmount/$name\" || :`" = "$UM_MOUNTPOINT"; then
-		rm -f "/var/run/usbmount/$name"
-		break
+find /var/run/usbmount/ -type l -printf '%p;%l\n' | while read -r name; do
+	link_name="${name%;*}"
+	link_target="${name#*;}"
+
+	# Check if the target of the symlink is used as mountpoint by a device
+	mount_source="$( findmnt --noheadings --output SOURCE --mountpoint "$link_target" || : )"
+	if [ -z "$mount_source" ]; then
+		rm "$link_name"
 	fi
 done
 
 exit 0
+
+# vim: noet
