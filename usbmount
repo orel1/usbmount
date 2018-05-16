@@ -110,29 +110,27 @@ if [ "$1" = add ]; then
 		log debug "$DEVNAME is a $UDEV_DEVTYPE"
 		log info "$DEVNAME does not contain a filesystem or disklabel"
 		exit 0
+	else
+		log debug "$DEVNAME contains filesystem type $UDEV_ID_FS_TYPE"
 	fi
 
 	# To mount the device, try using the specifications in /etc/fstab first,
 	# otherwise use the default mount options.
 
-	# Identify the device by kernel name descriptors (ex. /dev/sda1)
 	if egrep -q "^[[:blank:]]*$DEVNAME" /etc/fstab; then
-		log info "executing command: mount $DEVNAME"
-		mount $DEVNAME || log err "mount by DEVNAME with $DEVNAME wasn't successful; return code $?"
+		log debug "$DEVNAME is identified in the fstab by its device name"
+		mount_command="mount --source $DEVNAME"
 
-	# Identify the device by UUID
 	elif grep -q "^[[:blank:]]*UUID=$UDEV_ID_FS_UUID" /etc/fstab; then
-		log info "executing command: mount -U $UDEV_ID_FS_UUID"
-		mount -U $UDEV_ID_FS_UUID || log err "mount by UUID with $UDEV_ID_FS_UUID wasn't successful; return code $?"
+		log debug "$DEVNAME is identified in the fstab by its UUID"
+		mount_command="mount --uuid $UDEV_ID_FS_UUID"
 
-	# Identify the device by LABEL
 	elif grep -q "^[[:blank:]]*LABEL=$label_fstab" /etc/fstab; then
-		log info "executing command: mount -L $label"
-		mount -L "$label" || log err "mount by LABEL with $label wasn't successful; return code $?"
+		log debug "$DEVNAME is identified in the fstab by its LABEL"
+		mount_command="mount --label $label"
 
 	else
-		log debug "$DEVNAME contains filesystem type $UDEV_ID_FS_TYPE"
-
+		log debug "$DEVNAME is not identified in the fstab"
 		# Test if the filesystem type is in the list of filesystem
 		# types to mount.
 		if in_list "$UDEV_ID_FS_TYPE" "$FILESYSTEMS"; then
@@ -158,24 +156,35 @@ if [ "$1" = add ]; then
 				fi
 
 				# Mount the filesystem.
-				log info "executing command: mount -t$UDEV_ID_FS_TYPE ${options:+-o$options} $DEVNAME $mountpoint"
-				mount "-t$UDEV_ID_FS_TYPE" "${options:+-o$options}" "$DEVNAME" "$mountpoint"
+				mount_command="mount --type $UDEV_ID_FS_TYPE ${options:+--options $options} --source $DEVNAME --target $mountpoint"
 
-				# Run hook scripts; ignore errors.
-				export UM_DEVICE="$DEVNAME"
-				export UM_MOUNTPOINT="$mountpoint"
-				export UM_FILESYSTEM="$UDEV_ID_FS_TYPE"
-				export UM_MOUNTOPTIONS="$options"
-				export UM_VENDOR="$UDEV_ID_VENDOR"
-				export UM_MODEL="$UDEV_ID_MODEL"
-				log info "executing command: run-parts /etc/usbmount/mount.d"
-				run-parts /etc/usbmount/mount.d || :
 			else
 				# No suitable mount point found.
 				log warning "no mountpoint found for $DEVNAME"
 			fi
 		fi
 	fi
+
+	log info "executing command: $mount_command"
+	$mount_command || log err "mount device $DEVNAME wasn't successful; return code $?"
+
+	# If the mounting is done from the fstab, we do not know the
+	# mountpoint, or the options. But we can get them from key/value
+	# pairs provided by findmnt
+	eval "$( findmnt --pairs --source "$DEVNAME" || : )"
+	mountpoint="$TARGET"
+	options="$OPTIONS"
+
+	# Run hook scripts if the mount was succesful; ignore errors.
+	export UM_DEVICE="$DEVNAME"
+	export UM_MOUNTPOINT="$mountpoint"
+	export UM_FILESYSTEM="$UDEV_ID_FS_TYPE"
+	export UM_MOUNTOPTIONS="$options"
+	export UM_VENDOR="$UDEV_ID_VENDOR"
+	export UM_MODEL="$UDEV_ID_MODEL"
+	log info "executing command: run-parts /etc/usbmount/mount.d"
+	run-parts /etc/usbmount/mount.d || :
+
 elif [ "$1" = remove ]; then
 	# A block or partition device has been removed.
 
