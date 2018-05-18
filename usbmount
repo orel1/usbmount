@@ -135,13 +135,43 @@ if [ "$1" = add ]; then
 		# types to mount.
 		if in_list "$UDEV_ID_FS_TYPE" "$FILESYSTEMS"; then
 			# Search an available mountpoint.
-			for v in $MOUNTPOINTS; do
-				if [ -d "$v" ] && ! grep -q "^[^ ][^ ]*  *$v " /proc/mounts; then
-					mountpoint="$v"
-					log debug "mountpoint $mountpoint is available for $DEVNAME"
-					break
-				fi
-			done
+			if [ -z $MOUNTPOINTS ]; then
+				# Default mountpoints
+				n=0
+				while [ $n -le 9 ]; do
+					dirname="/media/usb$n"
+					if [ -d "$dirname" ]; then
+						# Check if the directory is used as mountpoint by a device
+						mounted_device="$( findmnt --noheadings --output SOURCE --mountpoint "$dirname" || : )"
+						if [ -z "$mounted_device" ]; then
+							mountpoint="$dirname"
+							log debug "mountpoint $mountpoint is available for $DEVNAME"
+							break
+						else
+							log debug "mountpoint $dirname is used by $mounted_device"
+						fi
+					else
+						# No directory available, so create it one
+						log info "executing command: mkdir -m 755 $dirname"
+						mkdir -m 755 "$dirname" ||
+							log warning "create directory $dirname wasn't successful; return code $?"
+						mountpoint="$dirname"
+						log debug "mountpoint $mountpoint is available for $DEVNAME"
+						break
+					fi
+					n=$(( n + 1 ))
+				done
+			else
+				# From config file
+				for v in $MOUNTPOINTS; do
+					if [ -d "$v" ] && ! grep -q "^[^ ][^ ]*  *$v " /proc/mounts; then
+						mountpoint="$v"
+						log debug "mountpoint $mountpoint is available for $DEVNAME"
+						break
+					fi
+				done
+			fi
+
 			if [ -n "$mountpoint" ]; then
 				# Determine mount options.
 				options=
@@ -160,7 +190,7 @@ if [ "$1" = add ]; then
 
 			else
 				# No suitable mount point found.
-				log warning "no mountpoint found for $DEVNAME"
+				log err "no mountpoint found for $DEVNAME"
 			fi
 		fi
 	fi
@@ -195,13 +225,27 @@ elif [ "$1" = remove ]; then
 	fstype="$FSTYPE"
 
 	if [ "$DEVNAME" = "$device" ] ; then
-		# If the mountpoint and filesystem type are maintained by
-		# this script, unmount the filesystem.
-		if in_list "$mountpoint" "$MOUNTPOINTS" &&
-			in_list "$fstype" "$FILESYSTEMS"; then
-			log debug "$DEVNAME contains filesystem type $fstype"
-			log info "executing command: umount -l $mountpoint"
-			umount -l "$mountpoint"
+		# If the mountpoint and filesystem type are maintained by this
+		# script, unmount the filesystem. This does not support devices
+		# mounted from fstab.
+		if [ -z $MOUNTPOINTS ]; then
+			# Default mountpoints
+			if expr "$mountpoint " : '/media/usb[0-9] ' ;then
+				if in_list "$fstype" "$FILESYSTEMS"; then
+					log debug "$DEVNAME contains filesystem type $fstype"
+					log info "executing command: umount -l $mountpoint"
+					umount -l "$mountpoint" || log err "$DEVNAME umount wasn't successful; return code $?"
+				fi
+			fi
+		else
+			# From config file
+			if in_list "$mountpoint" "$MOUNTPOINTS" ;then
+				if in_list "$fstype" "$FILESYSTEMS"; then
+					log debug "$DEVNAME contains filesystem type $fstype"
+					log info "executing command: umount -l $mountpoint"
+					umount -l "$mountpoint" || log err "$DEVNAME umount wasn't successful; return code $?"
+				fi
+			fi
 		fi
 	else
 		log info "Device $DEVNAME wasn't mounted"
