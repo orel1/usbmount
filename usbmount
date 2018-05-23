@@ -60,6 +60,7 @@ MOUNTPOINTS=
 FILESYSTEMS=
 MOUNTOPTIONS=
 FS_MOUNTOPTIONS=
+WHITELIST=
 VERBOSE=no
 
 if [ -r /etc/usbmount/usbmount.conf ]; then
@@ -112,6 +113,21 @@ if [ "$1" = add ]; then
 		exit 0
 	else
 		log debug "$DEVNAME contains filesystem type $UDEV_ID_FS_TYPE"
+	fi
+
+	# If there is a white list, check if the device is allowed to be mounted
+	if [ -n "$WHITELIST" ]; then
+		if in_list "$UDEV_ID_SERIAL" "$WHITELIST"; then
+			log debug "$DEVNAME with serial id $UDEV_ID_SERIAL is allowed"
+			allowed_device="yes"
+		elif in_list "$UDEV_ID_SERIAL_SHORT" "$WHITELIST"; then
+			log debug "$DEVNAME with serial id $UDEV_ID_SERIAL_SHORT is allowed"
+			allowed_device="yes"
+		fi
+		if [ "$allowed_device" != "yes" ]; then
+			log warning "$DEVNAME is not allowed to be mounted"
+			exit 0
+		fi
 	fi
 
 	# To mount the device, try using the specifications in /etc/fstab first,
