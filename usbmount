@@ -180,10 +180,15 @@ if [ "$1" = add ]; then
 			else
 				# From config file
 				for v in $MOUNTPOINTS; do
-					if [ -d "$v" ] && ! grep -q "^[^ ][^ ]*  *$v " /proc/mounts; then
-						mountpoint="$v"
-						log debug "mountpoint $mountpoint is available for $DEVNAME"
-						break
+					if [ -d "$v" ]; then
+						mounted_device="$( findmnt --noheadings --output SOURCE --mountpoint "$v" || : )"
+						if [ -z "$mounted_device" ]; then
+							mountpoint="$v"
+							log debug "mountpoint $mountpoint is available for $DEVNAME"
+							break
+						else
+							log debug "mountpoint $v is used by $mounted_device"
+						fi
 					fi
 				done
 			fi
