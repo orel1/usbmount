@@ -15,6 +15,14 @@ if [ "$1" = remove -o "$1" = abort-install -o "$1" = purge ]; then
 	done
 fi
 
+# If the package is purged, try to remove enabled hooks.
+if [ "$1" = purge ]; then
+	rm -f /etc/usbmount/pre-mount.d/*
+	rm -f /etc/usbmount/post-mount.d/*
+	rm -f /etc/usbmount/umount.d/*
+fi
+
+
 #DEBHELPER#
 
 exit 0

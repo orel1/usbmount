@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+	configure)
+		# Enable defaults hooks
+		ln -s /usr/share/usbmount/hooks/create_model_symlink /etc/usbmount/post-mount.d/00_create_model_symlink
+		ln -s /usr/share/usbmount/hooks/remove_symlink       /etc/usbmount/umount.d/00_remove_symlink
+		;;
+esac
+
+#DEBHELPER#
+
+exit 0
