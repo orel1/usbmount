@@ -205,25 +205,29 @@ if [ "$1" = add ]; then
 		fi
 	fi
 
-	log info "executing command: $mount_command"
-	$mount_command || log err "mount device $DEVNAME wasn't successful; return code $?"
-
-	# If the mounting is done from the fstab, we do not know the
-	# mountpoint, or the options. But we can get them from key/value
-	# pairs provided by findmnt
-	eval "$( findmnt --pairs --source "$DEVNAME" || : )"
-	mountpoint="$TARGET"
-	options="$OPTIONS"
-
-	# Run hook scripts if the mount was succesful; ignore errors.
+	# Run pre-mount hook scripts; ignore errors.
 	export UM_DEVICE="$DEVNAME"
 	export UM_MOUNTPOINT="$mountpoint"
 	export UM_FILESYSTEM="$UDEV_ID_FS_TYPE"
 	export UM_MOUNTOPTIONS="$options"
 	export UM_VENDOR="$UDEV_ID_VENDOR"
 	export UM_MODEL="$UDEV_ID_MODEL"
-	log info "executing command: run-parts /etc/usbmount/mount.d"
-	run-parts /etc/usbmount/mount.d || :
+	log info "executing command: run-parts /etc/usbmount/pre-mount.d"
+	run-parts /etc/usbmount/pre-mount.d || :
+
+	# Mount the device
+	log info "executing command: $mount_command"
+	$mount_command || log err "mount device $DEVNAME wasn't successful; return code $?"
+
+	# Run post-mount hook scripts if the mount was succesful; ignore errors.
+	# If the mounting is done from the fstab, we do not know the mountpoint,
+	# or the options. But we can get them from key/value pairs provided by
+	# findmnt
+	eval "$( findmnt --pairs --source "$DEVNAME" || : )"
+	export UM_MOUNTPOINT="$TARGET"
+	export UM_MOUNTOPTIONS="$OPTIONS"
+	log info "executing command: run-parts /etc/usbmount/post-mount.d"
+	run-parts /etc/usbmount/post-mount.d || :
 
 elif [ "$1" = remove ]; then
 	# A block or partition device has been removed.

@@ -1,0 +1,3 @@
+/etc/usbmount/pre-mount.d
+/etc/usbmount/post-mount.d
+/etc/usbmount/umount.d

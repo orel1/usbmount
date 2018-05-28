@@ -1,4 +1,4 @@
-00_create_model_symlink etc/usbmount/mount.d
+00_create_model_symlink etc/usbmount/post-mount.d
 00_remove_symlink etc/usbmount/umount.d
 usbmount usr/share/usbmount
 functions usr/share/usbmount
