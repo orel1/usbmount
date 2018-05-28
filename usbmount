@@ -17,28 +17,20 @@ set -e
 exec > /dev/null 2>&1
 
 ######################################################################
-# Auxiliary functions
+# Variables definition
 
-# Log a string via the syslog facility.
-log()
-{
-	VERBOSE="$( echo $VERBOSE | tr '[:upper:]' '[:lower:]' )"
-	case "$1" in
-		err)
-			logger -p user.$1 -t usbmount[$$] -- $2 && exit 1 ;;
-		warning)
-			logger -p user.$1 -t usbmount[$$] -- $2 ;;
-		info)
-			case "$VERBOSE" in
-				yes|debug) logger -p user.$1 -t usbmount[$$] -- $2 ;;
-			esac ;;
-		debug)
-			case "$VERBOSE" in
-				debug) logger -p user.$1 -t usbmount[$$] -- $2 ;;
-			esac ;;
-	esac
-}
+# Default values for variables define in the configuration file.
+ENABLED=1
+MOUNTPOINTS=
+FILESYSTEMS=
+MOUNTOPTIONS=
+FS_MOUNTOPTIONS=
+WHITELIST=
+VERBOSE=no
 
+
+######################################################################
+# Internal functions
 
 # Test if the first parameter is in the list given by the second
 # parameter.
@@ -54,14 +46,8 @@ in_list()
 ######################################################################
 # Main program
 
-# Default values for configuration variables.
-ENABLED=1
-MOUNTPOINTS=
-FILESYSTEMS=
-MOUNTOPTIONS=
-FS_MOUNTOPTIONS=
-WHITELIST=
-VERBOSE=no
+# Load shared functions
+. /usr/share/usbmount/functions
 
 if [ -r /etc/usbmount/usbmount.conf ]; then
 	. /etc/usbmount/usbmount.conf
@@ -72,6 +58,9 @@ if [ "${ENABLED:-1}" -eq 0 ]; then
 	log info "usbmount is disabled, see /etc/usbmount/usbmount.conf"
 	exit 0
 fi
+
+# Export verbosity level to be usable from hooks
+export VERBOSE="$VERBOSE"
 
 # Per Policy 9.3.2, directories under /var/run have to be created
 # after every reboot.

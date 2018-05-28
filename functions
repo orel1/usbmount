@@ -1,0 +1,36 @@
+#
+# Common usbmount functions.
+# These functions are used by usbmount itself, and are also usable in
+# hooks. To use them in your own hooks scripts, you have to source this
+# file from within your scripts.
+#
+
+
+log()
+#----------------------------------------------------------------------
+#  DESCR: Log a string via the syslog user facility, depending of the
+#         verbosity level define in the configuration file
+#         (yes/no/debug).
+#  PARAM: $1> syslog level (err/warning/info/debug)
+#         $2> The string to log (inside double quote)
+# RETURN: -
+#----------------------------------------------------------------------
+{
+	VERBOSE="$( echo $VERBOSE | tr '[:upper:]' '[:lower:]' )"
+	case "$1" in
+		err)
+			logger -p user.$1 -t usbmount[$$] -- $2 && exit 1 ;;
+		warning)
+			logger -p user.$1 -t usbmount[$$] -- $2 ;;
+		info)
+			case "$VERBOSE" in
+				yes|debug) logger -p user.$1 -t usbmount[$$] -- $2 ;;
+			esac ;;
+		debug)
+			case "$VERBOSE" in
+				debug) logger -p user.$1 -t usbmount[$$] -- $2 ;;
+			esac ;;
+	esac
+}
+
+# vim: noet ft=sh
