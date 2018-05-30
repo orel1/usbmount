@@ -14,14 +14,21 @@
 #
 set -e
 
+# Load shared functions
+. /usr/share/usbmount/functions
+
 find /var/run/usbmount/ -type l -printf '%p;%l\n' | while read -r name; do
 	link_name="${name%;*}"
+	link_basename="${link_name##*/}"
 	link_target="${name#*;}"
 
 	# Check if the target of the symlink is used as mountpoint by a device
 	mount_source="$( findmnt --noheadings --output SOURCE --mountpoint "$link_target" || : )"
 	if [ -z "$mount_source" ]; then
-		rm "$link_name"
+		rm "$link_name" &&
+			log debug "$UM_DEVICE (hook) symlink $link_basename removed"
+	else
+		log debug "$UM_DEVICE (hook) symlink $link_basename is used by $link_target"
 	fi
 done
 

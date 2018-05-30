@@ -13,6 +13,9 @@
 #
 set -e
 
+# Load shared functions
+. /usr/share/usbmount/functions
+
 # Replace spaces with underscores, remove special characters in vendor
 # and model name.
 UM_VENDOR=`echo "$UM_VENDOR" | sed 's/ /_/g; s/[^0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ._-]//g'`
@@ -35,6 +38,13 @@ if test -n "$partition"; then
 fi
 
 # If the symlink does not yet exist, create it.
-test -e "/var/run/usbmount/$name" || ln -sf "$UM_MOUNTPOINT" "/var/run/usbmount/$name"
+if [ -e "/var/run/usbmount/$name" ]; then
+	log debug "$UM_DEVICE (hook) symlink $name already exist"
+else
+	ln -sf "$UM_MOUNTPOINT" "/var/run/usbmount/$name" &&
+		log debug "$UM_DEVICE (hook) symlink $name created"
+fi
 
 exit 0
+
+# vim: noet
