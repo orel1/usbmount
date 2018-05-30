@@ -120,10 +120,17 @@ the following:
 
 # Hook Scripts
 
-After a device or partition has been mounted, the command `run-parts
-/etc/usbmount/mount.d` is executed. This runs all scripts in
-`/etc/usbmount/mount.d` which adhere to a certain naming convention; see
-the `run-parts` manual page for details.
+When a device or partition is plugged, additional scripts can be launched.
+
+* Before mounting: The command `run-parts /etc/usbmount/pre-mount.d` is
+  executed.
+
+* After a successful mounting: The command `run-parts /etc/usbmount/post-mount.d`
+  is executed.
+
+This runs all scripts in directories `pre-mount.d` and `post-mount.d` which
+adhere to a certain naming convention; see the `run-parts` manual page for
+details.
 
 The following environment variables are available to the scripts (in
 addition to those set in `/etc/usbmount/usbmount.conf` and by the hotplug
@@ -141,7 +148,7 @@ and udev systems):
 |`UM_LABEL`       | label of the device (empty if unknown)                   |
 
 Likewise, the command `run-parts /etc/usbmount/umount.d` is executed
-after a device or partition has been unmounted. The scripts can make use
+after a device or partition has been removed. The scripts can make use
 of the environment variables `UM_ACTION`, `UM_DEVICE`, `UM_MOUNTPOINT`
 and `UM_FILESYSTEM`. Note that vendor and model name are no longer
 easily available when the device has been removed. If you need this
