@@ -131,20 +131,22 @@ and udev systems):
 
 |    Variable     | Description                                              |
 |-----------------|----------------------------------------------------------|
+|`UM_ACTION`      | udev action (add/remove)                                 |
 |`UM_DEVICE`      | file name of the device node                             |
 |`UM_MOUNTPOINT`  | mountpoint                                               |
 |`UM_FILESYSTEM`  | filesystem type                                          |
 |`UM_MOUNTOPTIONS`| mount options that have been passed to the mount command |
 |`UM_VENDOR`      | vendor of the device (empty if unknown)                  |
 |`UM_MODEL`       | model name of the device (empty if unknown)              |
+|`UM_LABEL`       | label of the device (empty if unknown)                   |
 
 Likewise, the command `run-parts /etc/usbmount/umount.d` is executed
 after a device or partition has been unmounted. The scripts can make use
-of the environment variables `UM_DEVICE`, `UM_MOUNTPOINT` and `UM_FILESYSTEM`.
-Note that vendor and model name are no longer easily available when the
-device has been removed. If you need this information in an unmount hook
-script, write it to a file in a mount hook script and read it back in
-the unmount hook script.
+of the environment variables `UM_ACTION`, `UM_DEVICE`, `UM_MOUNTPOINT`
+and `UM_FILESYSTEM`. Note that vendor and model name are no longer
+easily available when the device has been removed. If you need this
+information in an unmount hook script, write it to a file in a mount
+hook script and read it back in the unmount hook script.
 
 
 ## Safely unmounting filesystems

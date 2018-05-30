@@ -206,12 +206,14 @@ if [ "$1" = add ]; then
 	fi
 
 	# Run pre-mount hook scripts; ignore errors.
+	export UM_ACTION="$1"
 	export UM_DEVICE="$DEVNAME"
 	export UM_MOUNTPOINT="$mountpoint"
 	export UM_FILESYSTEM="$UDEV_ID_FS_TYPE"
 	export UM_MOUNTOPTIONS="$options"
 	export UM_VENDOR="$UDEV_ID_VENDOR"
 	export UM_MODEL="$UDEV_ID_MODEL"
+	export UM_LABEL="$label"
 	log info "executing command: run-parts /etc/usbmount/pre-mount.d"
 	run-parts /etc/usbmount/pre-mount.d || :
 
@@ -266,6 +268,7 @@ elif [ "$1" = remove ]; then
 	fi
 
 	# Always run hook scripts; ignore errors.
+	export UM_ACTION="$1"
 	export UM_DEVICE="$DEVNAME"
 	export UM_MOUNTPOINT="$mountpoint"
 	export UM_FILESYSTEM="$fstype"
