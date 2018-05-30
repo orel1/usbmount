@@ -22,10 +22,10 @@ UM_VENDOR=`echo "$UM_VENDOR" | sed 's/ /_/g; s/[^0123456789abcdefghijklmnopqrstu
 UM_MODEL=`echo "$UM_MODEL" | sed 's/ /_/g; s/[^0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ._-]//g'`
 
 # Exit if both vendor and model name are empty.
-test -n "$UM_VENDOR" || test -n "$UM_MODEL" || exit 0
+[ -n "$UM_VENDOR" ] || [ -n "$UM_MODEL" ] || exit 0
 
 # Build symlink name.
-if test -n "$UM_VENDOR" && test -n "$UM_MODEL"; then
+if [ -n "$UM_VENDOR" ] && [ -n "$UM_MODEL" ]; then
 	name="${UM_VENDOR}_$UM_MODEL"
 else
 	name="$UM_VENDOR$UM_MODEL"
@@ -33,7 +33,7 @@ fi
 
 # Append partition number, if any, to the symlink name.
 partition=`echo "$UM_DEVICE" | sed 's/^.*[^0123456789]\([0123456789]*\)/\1/'`
-if test -n "$partition"; then
+if [ -n "$partition" ]; then
 	name="${name}_$partition"
 fi
 
