@@ -33,4 +33,24 @@ log()
 	esac
 }
 
+chk_cmd()
+#----------------------------------------------------------------------
+#  DESCR: Check if a command is present and executable
+#  PARAM: $1> Each command to test, separated by spaces
+# RETURN: The return code is the total number of errors encountered. If
+#         all the tested commands are executables the return code is 0
+#----------------------------------------------------------------------
+{
+	return_count=0
+	for item in "$@";
+	do
+		if ! [ -x "$( command -v $item )" ]; then
+			log debug "Command not found ($item)"
+			return_count="$(( $return_count + 1 ))"
+		fi
+	done
+	return $return_count
+}
+
+
 # vim: noet ft=sh
