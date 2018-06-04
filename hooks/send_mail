@@ -1,0 +1,45 @@
+#!/bin/sh
+#
+# This script sends an email to the root user when a device is plugged in or
+# unplugged.
+# To enable it, you have to create a symlink in the directories
+# '/etc/usbmount/pre-mount.d' and '/etc/usbmount/umount.d'.
+#
+
+set -e
+
+# Load shared functions
+. /usr/share/usbmount/functions
+
+if chk_cmd "mail" ; then
+	if [ "$UM_ACTION" = "add" ]; then
+		subject="[usbmount@$( hostname )] $UM_DEVICE has been added"
+	elif [ "$UM_ACTION" = "remove" ]; then
+		subject="[usbmount@$( hostname )] $UM_DEVICE has been removed"
+	else
+		exit 0
+	fi
+
+	timestamp="$( date +'%c'  )"
+
+	# Send the mail
+	echo "
+usbmount processed the "$UM_ACTION" event for the device "$UM_DEVICE".
+
+Additional details:
+- Device
+  - Name     : $UM_DEVICE
+  - Vendor   : $UM_VENDOR
+  - Model    : $UM_MODEL
+  - Label    : $UM_LABEL
+- Date       : $timestamp
+- Event      : $UM_ACTION
+- Mountpoint : $UM_MOUNTPOINT
+- Filesystem : $UM_FILESYSTEM
+
+" | mail -s "$subject" root
+fi
+
+exit 0
+
+# vim: noet

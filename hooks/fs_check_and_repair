@@ -1,0 +1,73 @@
+#!/bin/sh
+# This script check the health status of the file system (fat, ext2/3/4)
+# of the device and if necessary, attempt a repair.
+# To enable it, you have to create a symlink in the directorie
+# '/etc/usbmount/pre-mount.d'.
+#
+
+# Load shared functions
+. /usr/share/usbmount/functions
+
+########################################################################
+# Internal functions
+
+fs_check_vfat()
+{
+	if chk_cmd "dosfsck" ; then
+		if ! dosfsck -Vn "$UM_DEVICE" > /dev/null 2>&1 ; then
+			# the 'dosfsck -a' command can end with a return code 1,
+			# even if the repair has been carried out correctly. That's
+			# why we don't use 'set -e' in this script.
+			log info "exec: dosfsck -a $UM_DEVICE"
+			dosfsck -a "$UM_DEVICE"
+			if dosfsck -Vn "$UM_DEVICE" > /dev/null 2>&1 ; then
+				log info "the $UM_FILESYSTEM filesystem was fixed"
+			else
+				log warn "$UM_FILESYSTEM filesystem repair failed"
+			fi
+		else
+			log debug "the $UM_FILESYSTEM filesystem is clean"
+		fi
+	else
+		log warn "$UM_FILESYSTEM filesystem check cannot be performed"
+	fi
+}
+
+fs_check_ext()
+{
+	if chk_cmd "tune2fs" "e2fsck" ; then
+		if [ "$( tune2fs -l $UM_DEVICE | awk -F':' /Filesystem\ state/'{gsub(/^ +/,"",$2); print $2 }' )" != "clean" ] ; then
+			log info "exec: e2fsck -y $UM_DEVICE"
+			e2fsck -y "$UM_DEVICE"
+			if [ "$( tune2fs -l $UM_DEVICE | awk -F':' /Filesystem\ state/'{gsub(/^ +/,"",$2); print $2 }' )" = "clean" ] ; then
+				log info "the $UM_FILESYSTEM filesystem was fixed"
+			else
+				log warn "$UM_FILESYSTEM filesystem repair failed"
+			fi
+		else
+			log debug "the $UM_FILESYSTEM filesystem is clean"
+		fi
+	else
+		log warn "$UM_FILESYSTEM filesystem check cannot be performed"
+	fi
+}
+
+
+########################################################################
+# Main program
+
+case "$UM_FILESYSTEM" in
+	vfat)
+		fs_check_vfat
+		;;
+	ext2|ext3|ext4)
+		fs_check_ext
+		;;
+	*)
+		log warn "$UM_FILESYSTEM filesystem is not supported by this hook"
+		;;
+esac
+
+exit 0
+
+# vim: noet
