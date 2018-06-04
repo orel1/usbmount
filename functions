@@ -17,20 +17,28 @@ log()
 #----------------------------------------------------------------------
 {
 	VERBOSE="$( echo $VERBOSE | tr '[:upper:]' '[:lower:]' )"
-	case "$1" in
-		err)
-			logger -p user.$1 -t usbmount[$$] -- $2 && exit 1 ;;
-		warning)
-			logger -p user.$1 -t usbmount[$$] -- $2 ;;
-		info)
-			case "$VERBOSE" in
-				yes|debug) logger -p user.$1 -t usbmount[$$] -- $2 ;;
-			esac ;;
-		debug)
-			case "$VERBOSE" in
-				debug) logger -p user.$1 -t usbmount[$$] -- $2 ;;
-			esac ;;
-	esac
+
+	if [ "${0%/*}" = "/usr/share/usbmount" ]; then
+		# call by usbmount
+		log_command="logger -p user.$1 -t usbmount[$$] -- $DEVNAME $2"
+	else
+		# call by a hook
+		log_command="logger -p user.$1 -t usbmount[$$] -- $UM_DEVICE (hook) $2"
+	fi
+
+	if [ "$VERBOSE" = "debug" ]; then
+		$log_command
+	elif [ "$VERBOSE" = "yes" ]; then
+		case "$1" in
+			err) $log_command && exit 1 ;;
+			info|warning) $log_command  ;;
+		esac
+	elif [ "$VERBOSE" = "no" ]; then
+		case "$1" in
+			err) $log_command && exit 1 ;;
+			warning) $log_command  ;;
+		esac
+	fi
 }
 
 chk_cmd()

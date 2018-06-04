@@ -26,9 +26,9 @@ find /var/run/usbmount/ -type l -printf '%p;%l\n' | while read -r name; do
 	mount_source="$( findmnt --noheadings --output SOURCE --mountpoint "$link_target" || : )"
 	if [ -z "$mount_source" ]; then
 		rm "$link_name" &&
-			log debug "$UM_DEVICE (hook) symlink $link_basename removed"
+			log debug "symlink $link_basename removed"
 	else
-		log debug "$UM_DEVICE (hook) symlink $link_basename is used by $link_target"
+		log debug "symlink $link_basename is used by $link_target"
 	fi
 done
 

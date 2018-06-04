@@ -51,11 +51,11 @@ in_list()
 
 if [ -r /etc/usbmount/usbmount.conf ]; then
 	. /etc/usbmount/usbmount.conf
-	log debug "loaded usbmount configurations"
+	log debug "load configuration file"
 fi
 
 if [ "${ENABLED:-1}" -eq 0 ]; then
-	log info "usbmount is disabled, see /etc/usbmount/usbmount.conf"
+	log info "usbmount is disabled"
 	exit 0
 fi
 
@@ -75,11 +75,11 @@ umask 022
 if [ "$1" = add ]; then
 
 	# Acquire lock.
-	log debug "trying to acquire lock /var/run/usbmount/.mount.lock"
+	log debug "trying to acquire lock"
 	lockfile-create --retry 3 /var/run/usbmount/.mount || \
-		log err "cannot acquire lock /var/run/usbmount/.mount.lock"
+		log err "cannot acquire lock"
 	trap '( lockfile-remove /var/run/usbmount/.mount )' 0
-	log debug "acquired lock /var/run/usbmount/.mount.lock"
+	log debug "acquired lock"
 
 	# Query udev for the expected device information (as we are now running in
 	# a service's context and the env variables have been lost)
@@ -93,28 +93,28 @@ if [ "$1" = add ]; then
 		# contains spaces, these spaces must be replaced by \040.
 		label_fstab="$( echo $label | sed 's/ /\\\\040/g' )"
 	else
-		log err "Device $DEVNAME not found"
+		log err "device not found"
 	fi
 
 	if ! echo $UDEV_ID_FS_USAGE | egrep -q "(filesystem|disklabel)"; then
-		log debug "$DEVNAME is a $UDEV_DEVTYPE"
-		log info "$DEVNAME does not contain a filesystem or disklabel"
+		log debug "device is a $UDEV_DEVTYPE"
+		log info "device does not contain a filesystem or disklabel"
 		exit 0
 	else
-		log debug "$DEVNAME contains filesystem type $UDEV_ID_FS_TYPE"
+		log debug "filesystem is $UDEV_ID_FS_TYPE"
 	fi
 
 	# If there is a white list, check if the device is allowed to be mounted
 	if [ -n "$WHITELIST" ]; then
 		if in_list "$UDEV_ID_SERIAL" "$WHITELIST"; then
-			log debug "$DEVNAME with serial id $UDEV_ID_SERIAL is allowed"
+			log debug "serial id $UDEV_ID_SERIAL is allowed"
 			allowed_device="yes"
 		elif in_list "$UDEV_ID_SERIAL_SHORT" "$WHITELIST"; then
-			log debug "$DEVNAME with serial id $UDEV_ID_SERIAL_SHORT is allowed"
+			log debug "serial id $UDEV_ID_SERIAL_SHORT is allowed"
 			allowed_device="yes"
 		fi
 		if [ "$allowed_device" != "yes" ]; then
-			log warning "$DEVNAME is not allowed to be mounted"
+			log warning "not allowed to be mounted"
 			exit 0
 		fi
 	fi
@@ -123,19 +123,19 @@ if [ "$1" = add ]; then
 	# otherwise use the default mount options.
 
 	if egrep -q "^[[:blank:]]*$DEVNAME" /etc/fstab; then
-		log debug "$DEVNAME is identified in the fstab by its device name"
+		log debug "identified in the fstab by device name"
 		mount_command="mount --source $DEVNAME"
 
 	elif grep -q "^[[:blank:]]*UUID=$UDEV_ID_FS_UUID" /etc/fstab; then
-		log debug "$DEVNAME is identified in the fstab by its UUID"
+		log debug "identified in the fstab by UUID"
 		mount_command="mount --uuid $UDEV_ID_FS_UUID"
 
 	elif grep -q "^[[:blank:]]*LABEL=$label_fstab" /etc/fstab; then
-		log debug "$DEVNAME is identified in the fstab by its LABEL"
+		log debug "identified in the fstab by LABEL"
 		mount_command="mount --label $label"
 
 	else
-		log debug "$DEVNAME is not identified in the fstab"
+		log debug "not identified in the fstab"
 		# Test if the filesystem type is in the list of filesystem
 		# types to mount.
 		if in_list "$UDEV_ID_FS_TYPE" "$FILESYSTEMS"; then
@@ -150,18 +150,18 @@ if [ "$1" = add ]; then
 						mounted_device="$( findmnt --noheadings --output SOURCE --mountpoint "$dirname" || : )"
 						if [ -z "$mounted_device" ]; then
 							mountpoint="$dirname"
-							log debug "mountpoint $mountpoint is available for $DEVNAME"
+							log debug "mountpoint $mountpoint is available"
 							break
 						else
 							log debug "mountpoint $dirname is used by $mounted_device"
 						fi
 					else
 						# No directory available, so create it one
-						log info "executing command: mkdir -m 755 $dirname"
+						log info "exec: mkdir -m 755 $dirname"
 						mkdir -m 755 "$dirname" ||
-							log warning "create directory $dirname wasn't successful; return code $?"
+							log warning "creation of the directory $dirname failed ($?)"
 						mountpoint="$dirname"
-						log debug "mountpoint $mountpoint is available for $DEVNAME"
+						log debug "mountpoint $mountpoint is available"
 						break
 					fi
 					n=$(( n + 1 ))
@@ -173,7 +173,7 @@ if [ "$1" = add ]; then
 						mounted_device="$( findmnt --noheadings --output SOURCE --mountpoint "$v" || : )"
 						if [ -z "$mounted_device" ]; then
 							mountpoint="$v"
-							log debug "mountpoint $mountpoint is available for $DEVNAME"
+						log debug "$mountpoint $mountpoint is available"
 							break
 						else
 							log debug "mountpoint $v is used by $mounted_device"
@@ -200,7 +200,7 @@ if [ "$1" = add ]; then
 
 			else
 				# No suitable mount point found.
-				log err "no mountpoint found for $DEVNAME"
+				log err "no mountpoint found"
 			fi
 		fi
 	fi
@@ -214,12 +214,12 @@ if [ "$1" = add ]; then
 	export UM_VENDOR="$UDEV_ID_VENDOR"
 	export UM_MODEL="$UDEV_ID_MODEL"
 	export UM_LABEL="$label"
-	log info "executing command: run-parts /etc/usbmount/pre-mount.d"
+	log info "exec: run-parts /etc/usbmount/pre-mount.d"
 	run-parts /etc/usbmount/pre-mount.d || :
 
 	# Mount the device
-	log info "executing command: $mount_command"
-	$mount_command || log err "mount device $DEVNAME wasn't successful; return code $?"
+	log info "exec: $mount_command"
+	$mount_command || log err "the mount command failed ($?)"
 
 	# Run post-mount hook scripts if the mount was succesful; ignore errors.
 	# If the mounting is done from the fstab, we do not know the mountpoint,
@@ -228,7 +228,7 @@ if [ "$1" = add ]; then
 	eval "$( findmnt --pairs --source "$DEVNAME" || : )"
 	export UM_MOUNTPOINT="$TARGET"
 	export UM_MOUNTOPTIONS="$OPTIONS"
-	log info "executing command: run-parts /etc/usbmount/post-mount.d"
+	log info "exec: run-parts /etc/usbmount/post-mount.d"
 	run-parts /etc/usbmount/post-mount.d || :
 
 elif [ "$1" = remove ]; then
@@ -248,23 +248,23 @@ elif [ "$1" = remove ]; then
 			# Default mountpoints
 			if expr "$mountpoint " : '/media/usb[0-9] ' ;then
 				if in_list "$fstype" "$FILESYSTEMS"; then
-					log debug "$DEVNAME contains filesystem type $fstype"
-					log info "executing command: umount -l $mountpoint"
-					umount -l "$mountpoint" || log err "$DEVNAME umount wasn't successful; return code $?"
+					log debug "filesystem type $fstype"
+					log info "exec: umount -l $mountpoint"
+					umount -l "$mountpoint" || log err "the umount command failed ($?)"
 				fi
 			fi
 		else
 			# From config file
 			if in_list "$mountpoint" "$MOUNTPOINTS" ;then
 				if in_list "$fstype" "$FILESYSTEMS"; then
-					log debug "$DEVNAME contains filesystem type $fstype"
-					log info "executing command: umount -l $mountpoint"
-					umount -l "$mountpoint" || log err "$DEVNAME umount wasn't successful; return code $?"
+					log debug "filesystem type $fstype"
+					log info "exec: umount -l $mountpoint"
+					umount -l "$mountpoint" || log err "the umount command failed ($?)"
 				fi
 			fi
 		fi
 	else
-		log info "Device $DEVNAME wasn't mounted"
+		log info "non-mounted device"
 	fi
 
 	# Always run hook scripts; ignore errors.
@@ -272,12 +272,12 @@ elif [ "$1" = remove ]; then
 	export UM_DEVICE="$DEVNAME"
 	export UM_MOUNTPOINT="$mountpoint"
 	export UM_FILESYSTEM="$fstype"
-	log info "executing command: run-parts /etc/usbmount/umount.d"
+	log info "exec: run-parts /etc/usbmount/umount.d"
 	run-parts /etc/usbmount/umount.d || :
 else
 	log err "unexpected: action '$1'"
 fi
 
-log debug "usbmount execution finished"
+log debug "execution finished"
 
 # vim: noet

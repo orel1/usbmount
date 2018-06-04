@@ -39,10 +39,10 @@ fi
 
 # If the symlink does not yet exist, create it.
 if [ -e "/var/run/usbmount/$name" ]; then
-	log debug "$UM_DEVICE (hook) symlink $name already exist"
+	log debug "symlink $name already exist"
 else
 	ln -sf "$UM_MOUNTPOINT" "/var/run/usbmount/$name" &&
-		log debug "$UM_DEVICE (hook) symlink $name created"
+		log debug "symlink $name created"
 fi
 
 exit 0
